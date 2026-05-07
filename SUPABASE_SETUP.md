@@ -1,64 +1,93 @@
-# Configuración de Supabase para Monitoring Checklist
+# Configuración de Supabase — Monitoring Checklist (ECF 4)
 
-Para aislar los datos de este proyecto de otras tablas que puedas tener, hemos creado nuevas tablas con el prefijo `monitoring_`.
+## 1. Buckets de Storage
 
-## 1. Crear el Bucket de Almacenamiento
+Crea **dos** buckets en Supabase → Storage:
 
-1. Ve a **Storage** en Supabase.
-2. Crea un nuevo bucket llamado `inspections`.
-3. Hazlo público ("Public bucket") para poder visualizar las imágenes.
-4. En las políticas (Policies), permite el acceso `INSERT` y `SELECT` de forma pública o autenticada según tus necesidades.
+| Bucket            | Tipo    | Uso                                               |
+|-------------------|---------|---------------------------------------------------|
+| `vehicle-photos`  | Público | Fotos generales, hallazgos y firmas digitales     |
 
-## 2. Crear las Tablas en la Base de Datos
+Activa acceso público (`Public bucket`) y permite INSERT + SELECT.
 
-Ejecuta el siguiente código SQL en el **SQL Editor** de Supabase para crear las tablas necesarias específicamente para este proyecto:
+---
+
+## 2. SQL — Crear Tablas
+
+Ejecuta en **SQL Editor** de Supabase:
 
 ```sql
--- Tabla principal de inspecciones
+-- ─── Tabla principal de inspecciones ──────────────────────────────────────────
 CREATE TABLE monitoring_inspections (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  fecha date NOT NULL,
-  hora time NOT NULL,
-  conductor text NOT NULL,
-  cargo text NOT NULL,
-  patente text NOT NULL,
-  kilometraje integer NOT NULL,
-  marca_modelo text NOT NULL,
-  anio integer NOT NULL,
+  id            uuid    DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at    timestamptz DEFAULT timezone('utc', now()) NOT NULL,
+  fecha         date    NOT NULL,
+  hora          time    NOT NULL,
+  conductor     text    NOT NULL,
+  cargo         text    NOT NULL,
+  patente       text    NOT NULL,
+  kilometraje   integer NOT NULL,
+  marca_modelo  text    NOT NULL,
+  anio          integer NOT NULL,
+  resultado     text    NOT NULL, -- 'Vehículo Apto' | 'Vehículo No Apto para Operar'
   observaciones text,
-  foto_frontal text,
-  foto_trasera text,
-  foto_lateral_der text,
-  foto_lateral_izq text
+  firma_url     text,             -- URL del PNG de la firma digital
+  foto_frontal      text,
+  foto_trasera      text,
+  foto_lateral_der  text,
+  foto_lateral_izq  text
 );
 
--- Tabla de detalles de la inspección
-CREATE TABLE monitoring_inspection_results (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  inspection_id uuid REFERENCES monitoring_inspections(id) ON DELETE CASCADE NOT NULL,
-  item_name text NOT NULL,
-  is_good boolean NOT NULL
+-- ─── Tabla de detalles por ítem (ECF 4 / SIGO) ────────────────────────────────
+CREATE TABLE monitoring_inspection_details (
+  id            uuid    DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at    timestamptz DEFAULT timezone('utc', now()) NOT NULL,
+  inspection_id uuid    REFERENCES monitoring_inspections(id) ON DELETE CASCADE NOT NULL,
+  seccion       text    NOT NULL,    -- Nombre de la sección (p.ej. "Neumáticos y Tracción")
+  item_key      text    NOT NULL,    -- Key programático del ítem
+  item_label    text    NOT NULL,    -- Descripción legible del ítem
+  is_good       boolean NOT NULL,   -- true = Bueno, false = Malo
+  descripcion   text,               -- Obligatorio si is_good = false
+  foto_url      text,               -- URL de la foto del hallazgo (Obligatorio si is_good = false)
+  geotag        text,               -- Coordenadas GPS + timestamp
+  is_blocking   boolean DEFAULT false -- true = ítem bloqueante (Frenos, Cinturones, etc.)
 );
 
--- Índices recomendados para la búsqueda de la última patente (Kilometraje)
-CREATE INDEX idx_mon_inspections_patente ON monitoring_inspections(patente);
-CREATE INDEX idx_mon_inspections_created_at ON monitoring_inspections(created_at DESC);
+-- ─── Índices para rendimiento ─────────────────────────────────────────────────
+CREATE INDEX idx_mon_insp_patente    ON monitoring_inspections(patente);
+CREATE INDEX idx_mon_insp_created    ON monitoring_inspections(created_at DESC);
+CREATE INDEX idx_mon_det_insp_id     ON monitoring_inspection_details(inspection_id);
+CREATE INDEX idx_mon_det_is_good     ON monitoring_inspection_details(is_good);
 ```
 
-## 3. Configurar Variables de Entorno
+---
 
-Tus variables de entorno (`.env.local`) ya han sido configuradas localmente con las claves que proporcionaste:
+## 3. Variables de Entorno (`.env.local`)
+
+Ya configuradas en el proyecto:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://wjzdqcttuiixrybxoaqi.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_Vd8reHQz6C18PAcKvNF36g_eemMHc9p
 ```
 
-## 4. Despliegue en Vercel
+---
 
-1. Sube tu código a GitHub.
-2. Entra a Vercel, crea un nuevo proyecto e importa tu repositorio.
-3. Añade las variables de entorno (`NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`) en la configuración de Vercel.
-4. Haz clic en "Deploy".
+## 4. Ítems Bloqueantes (→ "Vehículo No Apto")
+
+Si cualquiera de estos ítems se marca como **Malo**, el resultado final cambia automáticamente a *"Vehículo No Apto para Operar"*:
+
+- Frenos
+- Profundidad de dibujo (mín. reglamentario)
+- Cinturones de seguridad (3 puntos / todos asientos)
+- Dirección
+- Luces de freno
+
+---
+
+## 5. Despliegue en Vercel
+
+1. Sube el código al repositorio GitHub `Pedro-IA-Netxtrust/monitoring-checklist`.
+2. Importa el proyecto en Vercel.
+3. Agrega las variables de entorno en **Settings → Environment Variables**.
+4. Deploy.
