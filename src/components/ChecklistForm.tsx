@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Shield, CircleDot, Eye, AlertOctagon, Wrench,
+  Shield, CircleDot, Eye, AlertOctagon, Wrench, Truck,
   Camera, CheckCircle, AlertTriangle, Send, UploadCloud,
   FileText, ChevronRight, ChevronLeft, Check, XCircle, MapPin
 } from 'lucide-react';
@@ -33,6 +33,7 @@ const sectionIcon = (id: string) => {
     visibilidad:      <Eye size={22} />,
     emergencia:       <AlertOctagon size={22} />,
     mecanica:         <Wrench size={22} />,
+    gestion_vial:     <Truck size={22} />,
   };
   return map[id] ?? <CheckCircle size={22} />;
 };
@@ -58,7 +59,7 @@ export default function ChecklistForm() {
   const [formData, setFormData] = useState({
     fecha:       new Date().toISOString().split('T')[0],
     hora:        new Date().toTimeString().substring(0, 5),
-    conductor:   '',
+    responsable: '',
     cargo:       '',
     patente:     '',
     kilometraje: '',
@@ -67,6 +68,9 @@ export default function ChecklistForm() {
     observaciones: '',
   });
 
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
+  const [inspectors, setInspectors] = useState<any[]>([]);
   const [lastKilometraje, setLastKilometraje] = useState<number | null>(null);
   const [inspection, setInspection] = useState<InspectionMap>(buildInitialInspection);
   const [generalPhotos, setGeneralPhotos] = useState<Record<string, File | null>>(() => {
@@ -76,27 +80,56 @@ export default function ChecklistForm() {
   });
   const [signature, setSignature] = useState<string | null>(null);
   const [aceptoEnvio, setAceptoEnvio] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [includeGestionVial, setIncludeGestionVial] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Derived steps based on toggle
+  const activeSteps = STEPS.filter(s => s.id !== 'gestion_vial' || includeGestionVial);
+  const activeSections = SECTIONS.filter(s => s.id !== 'gestion_vial' || includeGestionVial);
+
+  // ── Fetch Vehicles from DB ──────────────────────────────
+  useEffect(() => {
+    async function fetchInitialData() {
+      const { data: vData } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('is_active', true)
+        .order('patente', { ascending: true });
+      
+      if (vData) setVehicles(vData);
+
+      const { data: iData } = await supabase
+        .from('inspectors')
+        .select('*')
+        .eq('is_active', true)
+        .order('nombre', { ascending: true });
+      
+      if (iData) setInspectors(iData);
+    }
+    fetchInitialData();
+  }, []);
 
   // ── Autocomplete vehículo ──────────────────────────────
   useEffect(() => {
-    const v = MOCK_VEHICLES.find(v => v.patente === formData.patente);
+    const v = vehicles.find(v => v.patente === formData.patente);
     if (v) {
-      setFormData(p => ({ ...p, marcaModelo: v.marcaModelo, anio: v.anio }));
-      setLastKilometraje(v.lastKilometraje);
+      setFormData(p => ({ ...p, marcaModelo: `${v.marca} ${v.modelo}`, anio: v.anio.toString() }));
+      setLastKilometraje(v.km_actual);
+      setSelectedVehicle(v);
     } else {
       setFormData(p => ({ ...p, marcaModelo: '', anio: '' }));
       setLastKilometraje(null);
+      setSelectedVehicle(null);
     }
-  }, [formData.patente]);
+  }, [formData.patente, vehicles]);
 
-  // ── Autocomplete cargo ────────────────────────────────
+  // ── Autocomplete cargo responsable ───────────────────
   useEffect(() => {
-    const d = MOCK_DRIVERS.find(d => d.nombre === formData.conductor);
-    if (d) setFormData(p => ({ ...p, cargo: d.cargo }));
-  }, [formData.conductor]);
+    const i = inspectors.find(i => i.nombre === formData.responsable);
+    if (i) setFormData(p => ({ ...p, cargo: i.cargo }));
+  }, [formData.responsable, inspectors]);
 
   // ── Computed values ──────────────────────────────────
   const currentKm     = Number(formData.kilometraje);
@@ -116,9 +149,10 @@ export default function ChecklistForm() {
   const missingGenPhotos = GENERAL_PHOTOS.filter(p => !generalPhotos[p]);
 
   const stepComplete = useCallback((stepIdx: number): boolean => {
-    const step = STEPS[stepIdx];
+    const step = activeSteps[stepIdx];
+    if (!step) return true;
     if (step.id === 'identificacion') {
-      return !!(formData.conductor && formData.cargo && formData.patente &&
+      return !!(formData.responsable && formData.cargo && formData.patente &&
                 formData.kilometraje && isKmValid && formData.marcaModelo);
     }
     if (step.id === 'fotos') return missingGenPhotos.length === 0;
@@ -132,9 +166,9 @@ export default function ChecklistForm() {
       if (st.value === false) return !!(st.descripcion.trim() && st.fotoFile);
       return true;
     });
-  }, [formData, isKmValid, inspection, missingGenPhotos, signature, aceptoEnvio]);
+  }, [formData, isKmValid, inspection, missingGenPhotos, signature, aceptoEnvio, activeSteps]);
 
-  const allComplete = STEPS.every((_, i) => stepComplete(i));
+  const allComplete = activeSteps.every((_, i) => stepComplete(i));
 
   // ── Handlers ─────────────────────────────────────────
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -202,7 +236,7 @@ export default function ChecklistForm() {
         .insert([{
           fecha:          formData.fecha,
           hora:           formData.hora,
-          conductor:      formData.conductor,
+          responsable_inspeccion: formData.responsable,
           cargo:          formData.cargo,
           patente:        formData.patente,
           kilometraje:    currentKm,
@@ -225,7 +259,7 @@ export default function ChecklistForm() {
 
       // 4. Upload fault photos and build details rows
       const detailRows = [];
-      for (const section of SECTIONS) {
+      for (const section of activeSections) {
         for (const item of section.items) {
           const st = inspection[item.key];
           let fotoUrl: string | null = null;
@@ -256,6 +290,14 @@ export default function ChecklistForm() {
 
       if (detErr) console.warn('Details insert error:', detErr);
 
+      // 5. Update vehicle mileage
+      const { error: vehErr } = await supabase
+        .from('vehicles')
+        .update({ km_actual: currentKm })
+        .eq('patente', formData.patente);
+      
+      if (vehErr) console.warn('Vehicle KM update error:', vehErr);
+
       setStatusMessage({ type: 'success', text: `Inspección enviada. Resultado: ${resultadoFinal}` });
       resetForm();
       window.scrollTo(0, 0);
@@ -272,7 +314,7 @@ export default function ChecklistForm() {
     setFormData({
       fecha:       new Date().toISOString().split('T')[0],
       hora:        new Date().toTimeString().substring(0, 5),
-      conductor: '', cargo: '', patente: '', kilometraje: '',
+      responsable: '', cargo: '', patente: '', kilometraje: '',
       marcaModelo: '', anio: '', observaciones: '',
     });
     setInspection(buildInitialInspection());
@@ -282,6 +324,7 @@ export default function ChecklistForm() {
     setSignature(null);
     setAceptoEnvio(false);
     setCurrentStep(0);
+    setIncludeGestionVial(false);
   };
 
   // ── Step renderers ────────────────────────────────────
@@ -297,11 +340,11 @@ export default function ChecklistForm() {
           <input type="time" name="hora" value={formData.hora} onChange={handleInput} required />
         </div>
         <div className="form-group">
-          <label className="form-label">Conductor</label>
-          <select name="conductor" value={formData.conductor} onChange={handleInput} required>
-            <option value="">Seleccione un conductor…</option>
-            {MOCK_DRIVERS.map(d => (
-              <option key={d.nombre} value={d.nombre}>{d.nombre}</option>
+          <label className="form-label">Responsable de Inspección</label>
+          <select name="responsable" value={formData.responsable} onChange={handleInput} required>
+            <option value="">Seleccione responsable…</option>
+            {inspectors.map(i => (
+              <option key={i.id} value={i.nombre}>{i.nombre} ({i.rut})</option>
             ))}
           </select>
         </div>
@@ -314,8 +357,8 @@ export default function ChecklistForm() {
           <label className="form-label">Vehículo (Patente)</label>
           <select name="patente" value={formData.patente} onChange={handleInput} required>
             <option value="">Seleccione vehículo…</option>
-            {MOCK_VEHICLES.map(v => (
-              <option key={v.patente} value={v.patente}>{v.patente} — {v.marcaModelo}</option>
+            {vehicles.map(v => (
+              <option key={v.patente} value={v.patente}>{v.patente} — {v.marca} {v.modelo}</option>
             ))}
           </select>
         </div>
@@ -343,6 +386,57 @@ export default function ChecklistForm() {
             placeholder="Autocompletado al elegir patente" className="input-readonly" />
         </div>
       </div>
+
+      <div className="form-group full-width">
+          <div className="gestion-vial-toggle-card">
+            <div className="toggle-info">
+              <Truck size={24} className="text-primary" />
+              <div>
+                <strong>Inspección de Gestión Vial</strong>
+                <p>Marcar si requiere verificar requisitos adicionales (Aire ac., carga, GPS, etc.)</p>
+              </div>
+            </div>
+            <div className="toggle-switch">
+              <input 
+                type="checkbox" 
+                id="gv-toggle" 
+                checked={includeGestionVial} 
+                onChange={e => setIncludeGestionVial(e.target.checked)} 
+              />
+              <label htmlFor="gv-toggle"></label>
+            </div>
+          </div>
+  
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .gestion-vial-toggle-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1.25rem;
+          background: #f0f7ff;
+          border: 1px solid #c2e0ff;
+          border-radius: 1rem;
+          margin-top: 1rem;
+        }
+        .toggle-info { display: flex; gap: 1rem; align-items: center; }
+        .toggle-info p { margin: 0; font-size: 0.85rem; color: #4b5563; }
+        .toggle-info strong { color: #1e40af; }
+        
+        .toggle-switch { position: relative; width: 50px; height: 26px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-switch label {
+          position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+          background-color: #cbd5e1; transition: .4s; border-radius: 34px;
+        }
+        .toggle-switch label:before {
+          position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+          background-color: white; transition: .4s; border-radius: 50%;
+        }
+        .toggle-switch input:checked + label { background-color: var(--primary); }
+        .toggle-switch input:checked + label:before { transform: translateX(24px); }
+      ` }} />
     </div>
   );
 
@@ -488,14 +582,14 @@ export default function ChecklistForm() {
   );
 
   const renderStepContent = () => {
-    const stepId = STEPS[currentStep].id;
+    const stepId = activeSteps[currentStep].id;
     if (stepId === 'identificacion') return renderIdentification();
     if (stepId === 'fotos')          return renderGeneralPhotos();
     if (stepId === 'cierre')         return renderClosure();
     return renderCheckSection(stepId);
   };
 
-  const isLastStep = currentStep === STEPS.length - 1;
+  const isLastStep = currentStep === activeSteps.length - 1;
   const canAdvance = stepComplete(currentStep);
 
   return (
@@ -517,7 +611,7 @@ export default function ChecklistForm() {
 
       {/* ── Stepper ── */}
       <nav className="stepper" aria-label="pasos">
-        {STEPS.map((step, i) => {
+        {activeSteps.map((step, i) => {
           const done = stepComplete(i);
           const active = i === currentStep;
           return (
@@ -548,10 +642,10 @@ export default function ChecklistForm() {
       <main className="step-card">
         <div className="step-card-header">
           <span className="step-card-icon">
-            {currentStep < 2 ? <FileText size={22} /> : sectionIcon(STEPS[currentStep].id)}
+            {currentStep < 2 ? <FileText size={22} /> : sectionIcon(activeSteps[currentStep].id)}
           </span>
-          <h2 className="step-card-title">{STEPS[currentStep].label}</h2>
-          <span className="step-counter">{currentStep + 1} / {STEPS.length}</span>
+          <h2 className="step-card-title">{activeSteps[currentStep].label}</h2>
+          <span className="step-counter">{currentStep + 1} / {activeSteps.length}</span>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -591,11 +685,11 @@ export default function ChecklistForm() {
           {!canAdvance && (
             <p className="step-warning">
               <AlertTriangle size={14} />
-              {STEPS[currentStep].id === 'identificacion'
+              {activeSteps[currentStep].id === 'identificacion'
                 ? 'Complete todos los campos de identificación para continuar.'
-                : STEPS[currentStep].id === 'fotos'
+                : activeSteps[currentStep].id === 'fotos'
                 ? 'Suba las 4 fotografías generales para continuar.'
-                : STEPS[currentStep].id === 'cierre'
+                : activeSteps[currentStep].id === 'cierre'
                 ? 'Firme y marque la casilla de aceptación para enviar.'
                 : 'Evalúe todos los ítems. Si marca "Malo", complete la descripción y foto del hallazgo.'}
             </p>

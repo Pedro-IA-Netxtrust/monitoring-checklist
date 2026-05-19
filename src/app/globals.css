@@ -424,3 +424,45 @@ input:focus, select:focus, textarea:focus {
   padding: .6rem 1.5rem 1rem;
   font-size: .82rem; color: var(--orange-dark); font-weight: 500;
 }
+
+/* ─── Document Status Card ──────────────────────────────── */
+.doc-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: all var(--t);
+}
+.doc-status-card.expired {
+  border-color: var(--danger);
+  background: #FFF5F5;
+  color: #B91C1C;
+}
+.doc-status-card.valid {
+  border-color: var(--success);
+  background: #F0FFF4;
+  color: #15803D;
+}
+.doc-status-card strong {
+  display: block;
+  font-size: .95rem;
+  margin-bottom: .2rem;
+}
+.doc-status-card p {
+  font-size: .85rem;
+  opacity: .9;
+}
+.doc-details-mini {
+  display: flex;
+  gap: 1rem;
+  margin-top: .5rem;
+  font-size: .75rem;
+  font-weight: 600;
+  opacity: .8;
+}
+.full-width {
+  grid-column: 1 / -1;
+}

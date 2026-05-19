@@ -199,6 +199,53 @@ export const SECTIONS: Section[] = [
       },
     ],
   },
+  {
+    id: "gestion_vial",
+    title: "Gestión Vial / Adicionales",
+    icon: "Truck",
+    items: [
+      { 
+        key: "aire_acondicionado", 
+        label: "C.1 Aire acondicionado / Climatizador", 
+        hint: "Verificar funcionamiento frío/calor con vidrios cerrados." 
+      },
+      { 
+        key: "apoya_cabezas", 
+        label: "C.7 Apoya-cabezas en todos los asientos", 
+        hint: "Verificar que cada asiento posea su apoya-cabeza de fábrica." 
+      },
+      { 
+        key: "bocina", 
+        label: "C.11 Bocina operativa", 
+        hint: "Verificar sonido audible y funcionamiento." 
+      },
+      { 
+        key: "identificacion_logos", 
+        label: "C.13 N° Identificación, Logotipos y Cintas", 
+        hint: "Cinta reflectante 4-5cm, logos laterales y número visible." 
+      },
+      { 
+        key: "gps_velocidad", 
+        label: "C.14 Sistema de monitoreo GPS y Velocidad", 
+        hint: "Transmisión en tiempo real (máx. 20 seg) y soporte técnico." 
+      },
+      { 
+        key: "barrera_carga", 
+        label: "C.3/C.4 Protección y Aseguramiento de Carga", 
+        hint: "Certificación de malla/defensa y uso de eslingas/fajas (No nylon)." 
+      },
+      { 
+        key: "comunicacion_radio", 
+        label: "C.19/21 Radiocomunicación Bi-direccional", 
+        hint: "Equipo base o radio portátil según área de operación." 
+      },
+      { 
+        key: "equipamiento_mina", 
+        label: "C.15/16/20/24/25 Equipamiento Específico Mina", 
+        hint: "4x4, Diésel, Color Rojo, Foco Faenero y Cortacorriente (si aplica)." 
+      },
+    ],
+  },
 ];
 
 export const GENERAL_PHOTOS = ["Frontal", "Trasera", "Lateral Derecho", "Lateral Izquierdo"];
@@ -213,6 +260,7 @@ export const STEPS = [
   { id: "visibilidad",     label: "Señalización" },
   { id: "emergencia",      label: "Emergencia" },
   { id: "mecanica",        label: "Mecánica" },
+  { id: "gestion_vial",    label: "Gestión Vial" },
   { id: "fotos",           label: "Fotos Generales" },
   { id: "cierre",          label: "Cierre y Firma" },
 ];
