@@ -75,7 +75,13 @@ export default function VehiclesPage() {
 
     const payload = {
       ...formData,
-      patente: formData.patente.toUpperCase()
+      patente: formData.patente.toUpperCase(),
+      vencimiento_seguro: formData.vencimiento_seguro || null,
+      vencimiento_permiso: formData.vencimiento_permiso || null,
+      certificado_torque_ruedas: formData.certificado_torque_ruedas || null,
+      certificado_gps: formData.certificado_gps || null,
+      contrato_pertenece: formData.contrato_pertenece || null,
+      fecha_revision_tecnica: formData.fecha_revision_tecnica || null,
     };
 
     let error;
@@ -278,7 +284,7 @@ export default function VehiclesPage() {
                       type="number" 
                       required 
                       value={formData.anio}
-                      onChange={e => setFormData({...formData, anio: parseInt(e.target.value)})}
+                      onChange={e => setFormData({...formData, anio: parseInt(e.target.value) || 0})}
                     />
                   </div>
                   <div className="form-group">
@@ -307,7 +313,7 @@ export default function VehiclesPage() {
                       type="number" 
                       required 
                       value={formData.km_actual}
-                      onChange={e => setFormData({...formData, km_actual: parseInt(e.target.value)})}
+                      onChange={e => setFormData({...formData, km_actual: parseInt(e.target.value) || 0})}
                     />
                   </div>
                   <div className="form-group">

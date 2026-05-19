@@ -140,17 +140,23 @@ export default function InspectorsPage() {
 
     setLoading(true);
 
+    const payload = {
+      ...formData,
+      vencimiento_licencia_municipal: formData.vencimiento_licencia_municipal || null,
+      vencimiento_licencia_interna: formData.vencimiento_licencia_interna || null
+    };
+
     let error;
     if (editingInspector) {
       const { error: err } = await supabase
         .from('inspectors')
-        .update(formData)
+        .update(payload)
         .eq('id', editingInspector.id);
       error = err;
     } else {
       const { error: err } = await supabase
         .from('inspectors')
-        .insert([formData]);
+        .insert([payload]);
       error = err;
     }
 
