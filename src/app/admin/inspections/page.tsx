@@ -15,8 +15,11 @@ import {
   User,
   Truck,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useSearchParams } from 'next/navigation';
 
@@ -86,9 +89,17 @@ function InspectionsContent() {
           <p className="page-subtitle">Revisa el cumplimiento de ECF 4 por vehículo.</p>
         </div>
         <div className="header-actions">
+          <button className="btn-secondary" onClick={fetchInspections}>
+            <RefreshCw size={18} />
+            <span className="hide-mobile">Actualizar</span>
+          </button>
+          <Link href="/admin/config" className="btn-secondary">
+            <Settings size={18} />
+            <span className="hide-mobile">Configuración</span>
+          </Link>
           <button className="btn-secondary">
             <Download size={18} />
-            <span>Exportar Excel</span>
+            <span className="hide-mobile">Exportar Excel</span>
           </button>
         </div>
       </div>
