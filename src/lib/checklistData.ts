@@ -248,7 +248,17 @@ export const SECTIONS: Section[] = [
   },
 ];
 
-export const GENERAL_PHOTOS = ["Frontal", "Trasera", "Lateral Derecho", "Lateral Izquierdo"];
+/** Orden UI: izquierda → trasera → derecha → frontal. Todas opcionales. */
+export const GENERAL_PHOTOS = [
+  "Lateral Izquierdo",
+  "Trasera",
+  "Lateral Derecho",
+  "Frontal",
+];
+
+/** Nivel de combustible (opcional en el checklist). */
+export const FUEL_LEVELS = ["1/8", "1/4", "1/2", "3/4", "FULL"] as const;
+export type FuelLevel = (typeof FUEL_LEVELS)[number];
 
 // ============================================================
 // Pasos del Stepper

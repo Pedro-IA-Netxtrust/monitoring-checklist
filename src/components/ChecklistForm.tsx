@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import {
-  SECTIONS, GENERAL_PHOTOS, STEPS, BLOCKING_ITEMS,
-  MOCK_DRIVERS, MOCK_VEHICLES, type CheckItem,
+  SECTIONS, GENERAL_PHOTOS, STEPS, BLOCKING_ITEMS, FUEL_LEVELS,
+  MOCK_DRIVERS, MOCK_VEHICLES, type CheckItem, type FuelLevel,
 } from '@/lib/checklistData';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import FaultPhoto from '@/components/FaultPhoto';
@@ -67,6 +67,7 @@ export default function ChecklistForm() {
     anio:        '',
     observaciones: '',
   });
+  const [nivelCombustible, setNivelCombustible] = useState<FuelLevel | ''>('');
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
@@ -146,8 +147,6 @@ export default function ChecklistForm() {
     .filter(([_, s]) => s.value === false && (!s.descripcion.trim() || !s.fotoFile))
     .map(([k]) => k);
 
-  const missingGenPhotos = GENERAL_PHOTOS.filter(p => !generalPhotos[p]);
-
   const stepComplete = useCallback((stepIdx: number): boolean => {
     const step = activeSteps[stepIdx];
     if (!step) return true;
@@ -155,7 +154,8 @@ export default function ChecklistForm() {
       return !!(formData.responsable && formData.cargo && formData.patente &&
                 formData.kilometraje && isKmValid && formData.marcaModelo);
     }
-    if (step.id === 'fotos') return missingGenPhotos.length === 0;
+    // Fotos generales opcionales (0–4)
+    if (step.id === 'fotos') return true;
     if (step.id === 'cierre') return !!signature && aceptoEnvio;
     // Checklist section
     const sec = SECTIONS.find(s => s.id === step.id);
@@ -166,7 +166,7 @@ export default function ChecklistForm() {
       if (st.value === false) return !!(st.descripcion.trim() && st.fotoFile);
       return true;
     });
-  }, [formData, isKmValid, inspection, missingGenPhotos, signature, aceptoEnvio, activeSteps]);
+  }, [formData, isKmValid, inspection, signature, aceptoEnvio, activeSteps]);
 
   const allComplete = activeSteps.every((_, i) => stepComplete(i));
 
@@ -249,6 +249,7 @@ export default function ChecklistForm() {
           foto_trasera:   genUrls['Trasera']         ?? null,
           foto_lateral_der: genUrls['Lateral Derecho'] ?? null,
           foto_lateral_izq: genUrls['Lateral Izquierdo'] ?? null,
+          nivel_combustible: nivelCombustible || null,
         }])
         .select()
         .single();
@@ -323,6 +324,7 @@ export default function ChecklistForm() {
     setGeneralPhotos(reset);
     setSignature(null);
     setAceptoEnvio(false);
+    setNivelCombustible('');
     setCurrentStep(0);
     setIncludeGestionVial(false);
   };
@@ -384,6 +386,25 @@ export default function ChecklistForm() {
           <label className="form-label">Año</label>
           <input type="text" value={formData.anio} readOnly
             placeholder="Autocompletado al elegir patente" className="input-readonly" />
+        </div>
+      </div>
+
+      <div className="form-group full-width">
+        <label className="form-label">
+          Nivel de combustible
+          <span className="label-hint">Opcional</span>
+        </label>
+        <div className="fuel-level-btns" role="group" aria-label="Nivel de combustible">
+          {FUEL_LEVELS.map(level => (
+            <button
+              key={level}
+              type="button"
+              className={`fuel-level-btn ${nivelCombustible === level ? 'active' : ''}`}
+              onClick={() => setNivelCombustible(prev => (prev === level ? '' : level))}
+            >
+              {level}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -509,6 +530,7 @@ export default function ChecklistForm() {
 
   const renderGeneralPhotos = () => (
     <div className="step-body">
+      <p className="gen-photo-hint">Puede omitir fotos. Orden sugerido: izquierda, trasera, derecha y frontal.</p>
       <div className="gen-photo-grid">
         {GENERAL_PHOTOS.map(label => {
           const file = generalPhotos[label];
@@ -529,7 +551,7 @@ export default function ChecklistForm() {
               <span className="gen-photo-label">{label}</span>
               {file
                 ? <span className="gen-photo-ok">✓ Cargada</span>
-                : <span className="gen-photo-req">Obligatorio</span>
+                : <span className="gen-photo-req">Opcional</span>
               }
             </label>
           );

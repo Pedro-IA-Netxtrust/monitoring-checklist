@@ -335,6 +335,40 @@ input:focus, select:focus, textarea:focus {
 .gen-photo-label { font-size: .85rem; font-weight: 600; color: var(--text); }
 .gen-photo-ok    { font-size: .75rem; color: var(--success); font-weight: 700; }
 .gen-photo-req   { font-size: .75rem; color: var(--grey); }
+.gen-photo-hint  {
+  margin: 0 0 1rem;
+  font-size: .85rem;
+  color: var(--text-muted);
+}
+
+/* ─── Nivel de combustible ──────────────────────────────── */
+.fuel-level-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.fuel-level-btn {
+  flex: 1 1 0;
+  min-width: 3.5rem;
+  padding: .7rem .5rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--t), background var(--t), color var(--t);
+}
+.fuel-level-btn:hover {
+  border-color: var(--blue);
+  background: #F0F5FF;
+}
+.fuel-level-btn.active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
 
 /* ─── Resultado Badge ───────────────────────────────────── */
 .resultado-noapto {
